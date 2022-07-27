@@ -16,27 +16,87 @@ MainWindow::MainWindow(QWidget *parent)
     connect(control_sock, SIGNAL(readyRead()), this, SLOT(recieve_control()));
 }
 
+
 MainWindow::~MainWindow()
 {
     delete ui;
 }
 
 void MainWindow::send_preview_scr() {
-    take_preview_scr();
-    auto before_comp = scr_data.size();
-    scr_data = qComsockpress(scr_data, compression.toInt());
-    auto after_comp = scr_data.size();
-    int sended_bytes = sock->writeDatagram(scr_data, QHostAddress(ip), port.toUInt());
-    auto compr_rate = 100 * (after_comp / (double) before_comp);
-    qDebug() << before_comp << " -> " << after_comp << ", rate=" << compr_rate;
-    if (-1 == sended_bytes) {
-        qDebug() << "can not send datagram";
+    if (status == STATUS::CONNECTED) {
+        take_preview_scr();
+        auto before_comp = scr_data.size();
+        QByteArray dg_data = qCompress(scr_data, settings.compression.toInt());
+        auto after_comp = dg_data.size();
+        protocol_msg_data ans;
+        ans.data = dg_data;
+        ans.msg = "SCR";
+        QByteArray data;
+        QDataStream answer(&data, QIODevice::WriteOnly);
+        answer << ans;
+        qDebug() << data.size() << ": data size";
+        int sended_bytes = sock->writeDatagram(data, QHostAddress(ip), port.toUInt());
+        auto compr_rate = 100 * (after_comp / (double) before_comp);
+        qDebug() << before_comp << " -> " << after_comp << ", rate=" << 100 - compr_rate;
+        if (-1 == sended_bytes) {
+            qDebug() << "can not send datagram";
+        }
     }
 }
 
+void MainWindow::recieve_settings(const QNetworkDatagram &dg)
+{
+    QByteArray data = dg.data();
+    QDataStream ds(&data, QIODevice::ReadOnly);
+    ds >> settings;
+    ui->dsc_button->setEnabled(true);
+    ui->connect_button->setEnabled(false);
+    preview_timer->start(settings.preview_upd.toUInt()*1000);
+    status = STATUS::CONNECTED;
+    ui->status_info->setText("Подключен");
+    qDebug() << "settings recieved, connected";
+    qDebug() << settings.y_res << " " << settings.x_res << " " <<
+                settings.img_format << " " << settings.compression;
+}
+
+void MainWindow::recieve_server_msg(const QNetworkDatagram &dg)
+{
+    QByteArray data = dg.data();
+    QDataStream ds(&data, QIODevice::ReadOnly);
+    protocol_msg_data msg;
+    ds >> msg;
+    if (msg.msg != "OK") {
+        status = STATUS::ERROR;
+    }
+    else {
+        if (status == STATUS::AWAITING_DISCONNECTION) {
+            status = STATUS::DISCONNECTED;
+            qDebug() << "DISCONNECTED";
+            ui->status_info->setText("Не подключен");
+            ui->dsc_button->setEnabled(false);
+            ui->connect_button->setEnabled(true);
+            preview_timer->stop();
+            control_sock->close();
+        }
+        else if (status == STATUS::AWAITING_CONNECTION) {
+            status = STATUS::AWAITING_SETTINGS;
+            qDebug() << "Connected, waiting for settings";
+            ui->status_info->setText("Ожидание настроек");
+        }
+    }
+}
+
+
 void MainWindow::read_server_respond() {
     if (sock->hasPendingDatagrams()) {
+        auto dg = sock->receiveDatagram();
 
+        if (status == STATUS::AWAITING_SETTINGS) {
+            recieve_settings(dg);
+        }
+        else {
+            recieve_server_msg(dg);
+        }
     }
 }
 
@@ -57,38 +117,48 @@ void MainWindow::take_preview_scr() {
         return;
     QPixmap pxm = screen->grabWindow(0);
 
-    pxm = pxm.scaled(QSize(x_res.toInt(), y_res.toInt()), Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+    pxm = pxm.scaled(QSize(settings.x_res.toInt(), settings.y_res.toInt()), Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
 
     QBuffer buf(&scr_data);
     buf.open(QIODevice::WriteOnly);
-    pxm.save(&buf, img_format.toStdString().data());
+    pxm.save(&buf, settings.img_format.toStdString().data());
 }
 
 void MainWindow::on_connect_button_clicked()
 {
-    ip = ui->ip_ed->text();
+    protocol_msg_data msg {
+        "CON", {}
+    };
     port = ui->port_ed->text();
-    y_res = ui->yres_preview->text();
-    x_res = ui->xres_preview->text();
-    img_format = ui->imgformat->currentText();
-    compression = ui->imgcompr->currentText();
-    preview_upd = ui->updtimer_preview->text();
-    xmit_upd = ui->updtimer_transmit->text();
-
-    ui->dsc_button->setEnabled(true);
-    ui->connect_button->setEnabled(false);
-
-    preview_timer->start(preview_upd.toUInt()*1000);
-    qDebug() << "compr lvl=" << compression << ", imgformat=" << img_format;
+    ip = ui->ip_ed->text();
+    QByteArray data;
+    QDataStream ds(&data, QIODevice::WriteOnly);
+    ds << msg;
+    sock->writeDatagram(data, QHostAddress(ip), port.toUInt());
+    qDebug() << "Connection request sended";
+    status = STATUS::AWAITING_CONNECTION;
+    ui->status_info->setText("Ожидание подключения");
 
 
-    control_sock->bind(QHostAddress(ip), 1230);
+
+    //
+    //qDebug() << "compr lvl=" << compression << ", imgformat=" << img_format;
+
+
+    //control_sock->bind(QHostAddress(ip), 1230);
 }
 
 void MainWindow::on_dsc_button_clicked()
 {
-    ui->dsc_button->setEnabled(false);
-    ui->connect_button->setEnabled(true);
-    preview_timer->stop();
-    control_sock->close();
+    protocol_msg_data msg {
+        "DSC", 0
+    };
+    QByteArray data;
+    QDataStream ds(&data, QIODevice::WriteOnly);
+    ds << msg;
+    sock->writeDatagram(data, QHostAddress(ip), port.toUInt());
+    qDebug() << "Disconnection request sended";
+    status = STATUS::AWAITING_DISCONNECTION;
+    ui->status_info->setText("Ожидание отключения");
+
 }
