@@ -86,7 +86,7 @@ void MainWindow::on_connect_button_clicked()
 
 void MainWindow::on_dsc_button_clicked()
 {
-
+    sock->waitForBytesWritten();
     sock->disconnectFromHost();
     status = STATUS::DISCONNECTED;
     qDebug() << "DISCONNECTED";
@@ -94,5 +94,4 @@ void MainWindow::on_dsc_button_clicked()
     ui->dsc_button->setEnabled(false);
     ui->connect_button->setEnabled(true);
     preview_timer->stop();
-    control_sock->close();
 }
