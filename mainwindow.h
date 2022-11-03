@@ -25,16 +25,11 @@ class MainWindow : public QMainWindow
 
 public:
     MainWindow(QWidget *parent = nullptr);
-    void recieve_settings(const QNetworkDatagram& dg);
-    void recieve_server_msg(const QNetworkDatagram& dg);
     ~MainWindow();
 private slots:
-    void read_server_respond();
+    void read_settings_and_connect();
     void send_preview_scr();
-    void recieve_control();
-
     void on_connect_button_clicked();
-
     void on_dsc_button_clicked();
 private:
     enum class STATUS {
@@ -44,23 +39,6 @@ private:
         CONNECTED,
         ERROR,
         AWAITING_DISCONNECTION
-    };
-    struct protocol_msg_data {
-        QString msg;
-        QByteArray data;
-        // crypto
-        bool operator==(const protocol_msg_data& o){
-            return o.msg == this->msg && o.data == this->data;
-
-        }
-        friend QDataStream &operator<<(QDataStream& out, const protocol_msg_data& rhs){
-            out << rhs.data << rhs.msg;
-            return out;
-        }
-        friend QDataStream &operator>>(QDataStream& in, protocol_msg_data& rhs){
-            in  >> rhs.data >> rhs.msg;
-            return in;
-        }
     };
 
     struct server_settings_data {
@@ -80,17 +58,11 @@ private:
             return in;
         }
     };
-    // main socket - sock
-    // main socket - control sock
-    void start_control();
-    void stop_control();
-
     void take_preview_scr();
-    void take_scr();
 
     STATUS status = STATUS::DISCONNECTED;
     Ui::MainWindow *ui;
-    QUdpSocket* sock;
+    QTcpSocket* sock;
     QTimer* preview_timer;
     QByteArray scr_data;
 
@@ -101,6 +73,7 @@ private:
 
     QString ip;
     QString port;
+    QDataStream in;
     server_settings_data settings;
 };
 #endif // MAINWINDOW_H
