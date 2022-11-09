@@ -9,7 +9,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
     sock = new QTcpSocket(this);
     in.setDevice(sock);
-    in.setVersion(QDataStream::Qt_5_10);
+    in.setVersion(QDataStream::Qt_5_0);
     preview_timer = new QTimer(this);
     connect(preview_timer, SIGNAL(timeout()), this, SLOT(send_preview_scr()));
     connect(sock, SIGNAL(readyRead()), this, SLOT(read_settings_and_connect()));
@@ -24,15 +24,18 @@ MainWindow::~MainWindow()
 void MainWindow::send_preview_scr() {
     if (status == STATUS::CONNECTED) {
         take_preview_scr();
-        auto before_comp = scr_data.size();
-        QByteArray dg_data = qCompress(scr_data, settings.compression.toInt());
-        auto after_comp = dg_data.size();
-        int sended_bytes = sock->write(dg_data);
-        auto compr_rate = 100 * (after_comp / (double) before_comp);
-        qDebug() << before_comp << " -> " << after_comp << ", rate=" << 100 - compr_rate;
-        if (-1 == sended_bytes) {
-            qDebug() << "can not send datagram";
-        }
+        auto raw_size = scr_data.size();
+        auto compressed = qCompress(scr_data, settings.compression.toInt());
+        QByteArray dg_data;
+        QDataStream out(&dg_data, QIODevice::WriteOnly);
+        out.setVersion(QDataStream::Qt_5_0);
+        out << compressed;
+        auto compressed_size = compressed.size();
+        // int sended_bytes = sock->write(dg_data);
+        sock->write(dg_data);
+        qDebug() << "preview sended with size " << compressed_size;
+        auto compr_rate = 100 * (compressed_size / (double) raw_size);
+        qDebug() << raw_size << " -> " << compressed_size << ", rate=" << compr_rate;
     }
 }
 
