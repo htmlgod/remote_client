@@ -1,7 +1,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
-
+#include "xlib_utils.h"
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
@@ -14,11 +14,50 @@ MainWindow::MainWindow(QWidget *parent)
     connect(preview_timer, SIGNAL(timeout()), this, SLOT(send_preview_scr()));
     connect(sock, SIGNAL(readyRead()), this, SLOT(read_settings_and_connect()));
     ui->dsc_button->setEnabled(false);
+
+    control_socket = new QUdpSocket(this);
+    if (!control_socket->bind(QHostAddress::AnyIPv4, CONTROL_PORT)) {
+        qDebug() << "ERROR OPENING CONTROL SOCKET";
+    }
+    connect(control_socket, SIGNAL(readyRead()), this, SLOT(recieve_controls()));
+    frame_timer = new QTimer(this);
+    connect(frame_timer, SIGNAL(timeout()), this, SLOT(send_frame()));
+    //display = XOpenDisplay (NULL);
+
 }
 
 MainWindow::~MainWindow()
 {
     delete ui;
+}
+
+void MainWindow::recieve_controls()
+{
+    if (control_socket->hasPendingDatagrams()) {
+        control_data cd;
+        auto dg = control_socket->receiveDatagram();
+        QByteArray data = dg.data();
+        QDataStream ds(&data, QIODevice::ReadOnly);
+        ds >> cd;
+        if (cd.type == "CLICK") {
+            Display* display = XOpenDisplay (NULL);
+            click(display, Button1);
+        }
+    }
+}
+
+void MainWindow::send_frame()
+{
+    take_preview_scr();
+    QByteArray dg_data = qCompress(scr_data, settings.compression.toInt());
+    //QDataStream answer(&dg_data, QIODevice::WriteOnly);
+    //answer << qCompress(scr_data, settings.compression.toInt());
+    int sended_bytes = control_socket->writeDatagram(dg_data, QHostAddress(ip), SERVER_XMIT_PORT);
+    qDebug() << "ATTEMPT TO SEND FRAME";
+    qDebug() << dg_data.size();
+    if (-1 == sended_bytes) {
+        qDebug() << "can not send datagram(frame)";
+    }
 }
 
 void MainWindow::send_preview_scr() {
@@ -41,21 +80,41 @@ void MainWindow::send_preview_scr() {
 
 
 void MainWindow::read_settings_and_connect() {
-    in.startTransaction();
-    in >> settings;
-    if (!in.commitTransaction()) {
-        return;
+    if (status == STATUS::AWAITING_CONNECTION) {
+        in.startTransaction();
+        in >> settings;
+        if (!in.commitTransaction()) {
+            return;
+        }
+        ui->dsc_button->setEnabled(true);
+        ui->connect_button->setEnabled(false);
+        preview_timer->start(settings.preview_upd.toUInt()*1000);
+        status = STATUS::CONNECTED;
+        ui->status_info->setText("Подключен");
+        qDebug() << "settings recieved, connected";
+        qDebug() << settings.y_res << " " << settings.x_res << " " <<
+                    settings.img_format << " " << settings.compression;
     }
-    ui->dsc_button->setEnabled(true);
-    ui->connect_button->setEnabled(false);
-    preview_timer->start(settings.preview_upd.toUInt()*1000);
-    status = STATUS::CONNECTED;
-    ui->status_info->setText("Подключен");
-    qDebug() << "settings recieved, connected";
-    qDebug() << settings.y_res << " " << settings.x_res << " " <<
-                settings.img_format << " " << settings.compression;
-
-
+    else if(status == STATUS::CONNECTED or status == STATUS::CONTROL) {
+        in.startTransaction();
+        QString msg;
+        in >> msg;
+        if (!in.commitTransaction()) {
+            return;
+        }
+        if (msg == QString("START")) {
+            status = STATUS::CONTROL;
+            ui->status_info->setText("Управление");
+            frame_timer->start(settings.xmit_upd.toUInt()*1000);
+            qDebug() << "server started control";
+        }
+        else if (msg == QString("STOP")) {
+            status = STATUS::CONNECTED;
+            ui->status_info->setText("Подключен");
+            frame_timer->stop();
+            qDebug() << "server stoped control";
+        }
+    }
 }
 
 
@@ -66,9 +125,8 @@ void MainWindow::take_preview_scr() {
     if (!screen)
         return;
     QPixmap pxm = screen->grabWindow(0);
-
-    pxm = pxm.scaled(QSize(settings.x_res.toInt(),
-                           settings.y_res.toInt()),
+    QSize new_size = QSize(settings.x_res.toInt(),settings.y_res.toInt());
+    pxm = pxm.scaled(new_size,
                      Qt::IgnoreAspectRatio,
                      Qt::SmoothTransformation);
 

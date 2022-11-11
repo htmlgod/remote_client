@@ -13,7 +13,23 @@
 #include <QScreen>
 #include <QBuffer>
 #include <QCursor>
-#include <string>
+
+struct control_data {
+    QString type;
+    int xpos;
+    int ypos;
+    friend QDataStream &operator<<(QDataStream& out, const control_data& cd){
+        out << cd.type <<  cd.xpos <<  cd.ypos;
+        return out;
+    }
+    friend QDataStream &operator>>(QDataStream& in, control_data& cd){
+        in >> cd.type >>  cd.xpos >>  cd.ypos;
+        return in;
+    }
+};
+
+const int CONTROL_PORT = 1235;
+const int SERVER_XMIT_PORT = 1245;
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -27,6 +43,9 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 private slots:
+    void recieve_controls();
+    void send_frame();
+
     void read_settings_and_connect();
     void send_preview_scr();
     void on_connect_button_clicked();
@@ -35,6 +54,7 @@ private:
     enum class STATUS {
         DISCONNECTED,
         CONNECTED,
+        CONTROL,
         AWAITING_CONNECTION,
         ERROR
     };
@@ -67,6 +87,9 @@ private:
     QDataStream in;
     server_settings_data settings;
 
+    QUdpSocket* control_socket; // listening
+    QTimer* frame_timer;
+    //Display* display;
     Ui::MainWindow *ui;
 };
 #endif // MAINWINDOW_H
