@@ -25,42 +25,18 @@ class MainWindow : public QMainWindow
 
 public:
     MainWindow(QWidget *parent = nullptr);
-    void recieve_settings(const QNetworkDatagram& dg);
-    void recieve_server_msg(const QNetworkDatagram& dg);
     ~MainWindow();
 private slots:
-    void read_server_respond();
+    void read_settings_and_connect();
     void send_preview_scr();
-    void recieve_control();
-
     void on_connect_button_clicked();
-
     void on_dsc_button_clicked();
 private:
     enum class STATUS {
         DISCONNECTED,
-        AWAITING_CONNECTION,
-        AWAITING_SETTINGS,
         CONNECTED,
-        ERROR,
-        AWAITING_DISCONNECTION
-    };
-    struct protocol_msg_data {
-        QString msg;
-        QByteArray data;
-        // crypto
-        bool operator==(const protocol_msg_data& o){
-            return o.msg == this->msg && o.data == this->data;
-
-        }
-        friend QDataStream &operator<<(QDataStream& out, const protocol_msg_data& rhs){
-            out << rhs.data << rhs.msg;
-            return out;
-        }
-        friend QDataStream &operator>>(QDataStream& in, protocol_msg_data& rhs){
-            in  >> rhs.data >> rhs.msg;
-            return in;
-        }
+        AWAITING_CONNECTION,
+        ERROR
     };
 
     struct server_settings_data {
@@ -70,7 +46,7 @@ private:
         QString compression;
         QString preview_upd;
         QString xmit_upd;
-        bool operator==(const server_settings_data& o) const = default;
+        //bool operator==(const server_settings_data& o) const = default;
         friend QDataStream &operator<<(QDataStream& out, const server_settings_data& server_settings){
             out << server_settings.y_res <<  server_settings.x_res <<  server_settings.img_format <<  server_settings.compression <<  server_settings.preview_upd <<  server_settings.xmit_upd;
             return out;
@@ -80,27 +56,17 @@ private:
             return in;
         }
     };
-    // main socket - sock
-    // main socket - control sock
-    void start_control();
-    void stop_control();
-
     void take_preview_scr();
-    void take_scr();
 
     STATUS status = STATUS::DISCONNECTED;
-    Ui::MainWindow *ui;
-    QUdpSocket* sock;
-    QTimer* preview_timer;
+    QTcpSocket* sock;
     QByteArray scr_data;
-
-    QTimer* xmit_timer;
-    QUdpSocket* control_sock;
-    // vector for fullscreen img and etc
-    // also add listen socket for remote control
-
+    QTimer* preview_timer;
     QString ip;
     QString port;
+    QDataStream in;
     server_settings_data settings;
+
+    Ui::MainWindow *ui;
 };
 #endif // MAINWINDOW_H
