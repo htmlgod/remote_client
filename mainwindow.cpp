@@ -2,6 +2,8 @@
 #include "ui_mainwindow.h"
 
 #include "xlib_utils.h"
+
+Display* display;
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
@@ -14,20 +16,18 @@ MainWindow::MainWindow(QWidget *parent)
     connect(preview_timer, SIGNAL(timeout()), this, SLOT(send_preview_scr()));
     connect(sock, SIGNAL(readyRead()), this, SLOT(read_settings_and_connect()));
     ui->dsc_button->setEnabled(false);
-
     control_socket = new QUdpSocket(this);
-    if (!control_socket->bind(QHostAddress::AnyIPv4, CONTROL_PORT)) {
-        qDebug() << "ERROR OPENING CONTROL SOCKET";
+    display = XOpenDisplay (NULL);
+    if (display == NULL)
+    {
+        qDebug() << "Can't open display!";
+        return;
     }
-    connect(control_socket, SIGNAL(readyRead()), this, SLOT(recieve_controls()));
-    frame_timer = new QTimer(this);
-    connect(frame_timer, SIGNAL(timeout()), this, SLOT(send_frame()));
-    //display = XOpenDisplay (NULL);
-
 }
 
 MainWindow::~MainWindow()
 {
+    XCloseDisplay (display);
     delete ui;
 }
 
@@ -39,29 +39,20 @@ void MainWindow::recieve_controls()
         QByteArray data = dg.data();
         QDataStream ds(&data, QIODevice::ReadOnly);
         ds >> cd;
+        qDebug() << cd.type << " " << cd.xpos << " " << cd.ypos;
         if (cd.type == "CLICK") {
-            Display* display = XOpenDisplay (NULL);
+            move_to(display, cd.xpos, cd.ypos);
             click(display, Button1);
         }
-    }
-}
+//        if (cd.type == "MOVE") {
+//            move_cursor(display, cd.xpos, cd.ypos);
+//        }
 
-void MainWindow::send_frame()
-{
-    take_preview_scr();
-    QByteArray dg_data = qCompress(scr_data, settings.compression.toInt());
-    //QDataStream answer(&dg_data, QIODevice::WriteOnly);
-    //answer << qCompress(scr_data, settings.compression.toInt());
-    int sended_bytes = control_socket->writeDatagram(dg_data, QHostAddress(ip), SERVER_XMIT_PORT);
-    qDebug() << "ATTEMPT TO SEND FRAME";
-    qDebug() << dg_data.size();
-    if (-1 == sended_bytes) {
-        qDebug() << "can not send datagram(frame)";
     }
 }
 
 void MainWindow::send_preview_scr() {
-    if (status == STATUS::CONNECTED) {
+    if (status == STATUS::CONNECTED or status == STATUS::CONTROL) {
         take_preview_scr();
         auto raw_size = scr_data.size();
         auto compressed = qCompress(scr_data, settings.compression.toInt());
@@ -104,14 +95,20 @@ void MainWindow::read_settings_and_connect() {
         }
         if (msg == QString("START")) {
             status = STATUS::CONTROL;
+
+            if (!control_socket->bind(QHostAddress::AnyIPv4, CONTROL_PORT)) {
+                qDebug() << "ERROR OPENING CONTROL SOCKET";
+            }
+            connect(control_socket, SIGNAL(readyRead()), this, SLOT(recieve_controls()));
             ui->status_info->setText("Управление");
-            frame_timer->start(settings.xmit_upd.toUInt()*1000);
+            preview_timer->setInterval(settings.xmit_upd.toUInt()*1000);
             qDebug() << "server started control";
         }
         else if (msg == QString("STOP")) {
+            control_socket->close();
             status = STATUS::CONNECTED;
             ui->status_info->setText("Подключен");
-            frame_timer->stop();
+            preview_timer->setInterval(settings.preview_upd.toUInt()*1000);
             qDebug() << "server stoped control";
         }
     }

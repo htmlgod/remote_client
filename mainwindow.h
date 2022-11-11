@@ -29,7 +29,6 @@ struct control_data {
 };
 
 const int CONTROL_PORT = 1235;
-const int SERVER_XMIT_PORT = 1245;
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -44,7 +43,6 @@ public:
     ~MainWindow();
 private slots:
     void recieve_controls();
-    void send_frame();
 
     void read_settings_and_connect();
     void send_preview_scr();
@@ -88,8 +86,6 @@ private:
     server_settings_data settings;
 
     QUdpSocket* control_socket; // listening
-    QTimer* frame_timer;
-    //Display* display;
     Ui::MainWindow *ui;
 };
 #endif // MAINWINDOW_H
