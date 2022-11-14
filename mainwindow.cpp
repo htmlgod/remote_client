@@ -1,9 +1,10 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
-#include "xlib_utils.h"
+//#include "xlib_utils.h"
+#include <X11/extensions/XTest.h>
 
-Display* display;
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
@@ -17,17 +18,10 @@ MainWindow::MainWindow(QWidget *parent)
     connect(sock, SIGNAL(readyRead()), this, SLOT(read_settings_and_connect()));
     ui->dsc_button->setEnabled(false);
     control_socket = new QUdpSocket(this);
-    display = XOpenDisplay (NULL);
-    if (display == NULL)
-    {
-        qDebug() << "Can't open display!";
-        return;
-    }
 }
 
 MainWindow::~MainWindow()
 {
-    XCloseDisplay (display);
     delete ui;
 }
 
@@ -39,15 +33,39 @@ void MainWindow::recieve_controls()
         QByteArray data = dg.data();
         QDataStream ds(&data, QIODevice::ReadOnly);
         ds >> cd;
-        qDebug() << cd.type << " " << cd.xpos << " " << cd.ypos;
-        if (cd.type == "CLICK") {
-            move_to(display, cd.xpos, cd.ypos);
-            click(display, Button1);
+        qDebug() << cd.type << " " << cd.button << " " << cd.xpos << " " << cd.ypos;
+        if (cd.type == "PRESS") {
+            //move_to(display, cd.xpos, cd.ypos);
+           // click(display, Button1);
+            Display* display = XOpenDisplay (NULL);
+            if (display == NULL)
+            {
+                qDebug() << "Can't open display!";
+                return;
+            }
+            //mouse_press(display, cd.button);
+            XTestFakeButtonEvent(display, cd.button, True, CurrentTime);
+            XFlush (display);
+            XCloseDisplay(display);
         }
-//        if (cd.type == "MOVE") {
-//            move_cursor(display, cd.xpos, cd.ypos);
-//        }
+        if (cd.type == "MOVE") {
+            QCursor::setPos(cd.xpos, cd.ypos);
+            //move_to(display, cd.xpos, cd.ypos);
+        }
+        if (cd.type == "RELEASE") {
+            Display* display = XOpenDisplay (NULL);
+            if (display == NULL)
+            {
+                qDebug() << "Can't open display!";
+                return;
+            }
+            //mouse_release(display,cd.button);
+            XTestFakeButtonEvent(display, cd.button, False, CurrentTime);
+            XFlush (display);
+            XCloseDisplay(display);
+           //move_to(display, cd.xpos, cd.ypos);
 
+        }
     }
 }
 
@@ -63,9 +81,9 @@ void MainWindow::send_preview_scr() {
         auto compressed_size = compressed.size();
         // int sended_bytes = sock->write(dg_data);
         sock->write(dg_data);
-        qDebug() << "preview sended with size " << compressed_size;
+        //qDebug() << "preview sended with size " << compressed_size;
         auto compr_rate = 100 * (compressed_size / (double) raw_size);
-        qDebug() << raw_size << " -> " << compressed_size << ", rate=" << compr_rate;
+        //qDebug() << raw_size << " -> " << compressed_size << ", rate=" << compr_rate;
     }
 }
 

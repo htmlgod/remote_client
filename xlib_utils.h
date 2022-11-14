@@ -5,6 +5,7 @@
 #include <unistd.h>    // sleep and usleep
 #include <X11/Xlib.h>  // X11
 #include <X11/Xutil.h> // XGetPixel and XDestroyImage
+
 #include <string>
 
 extern Display* display;
@@ -28,8 +29,8 @@ void mouse_press(Display *display, int button)
     event.type = ButtonPress;
     if (XSendEvent (display, PointerWindow, True, ButtonPressMask, &event) == 0)
         fprintf (stderr, "Error to send the event!\n");
-    XFlush (display);
-    usleep (1);
+    //XFlush (display);
+    //usleep (1);
 
 }
 void mouse_release(Display *display, int button)
@@ -52,8 +53,8 @@ void mouse_release(Display *display, int button)
     event.type = ButtonRelease;
     if (XSendEvent (display, PointerWindow, True, ButtonReleaseMask, &event) == 0)
         fprintf (stderr, "Error to send the event!\n");
-    XFlush (display);
-    usleep (1);
+    //XFlush (display);
+    //usleep (1);
 }
 void click(Display *display, int button)
 {
