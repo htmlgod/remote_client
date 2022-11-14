@@ -2,7 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include <QTest>
+#include <QtNetwork>
 #include <QNetworkDatagram>
 #include <QDataStream>
 #include <QUdpSocket>
@@ -13,18 +13,47 @@
 #include <QScreen>
 #include <QBuffer>
 #include <QCursor>
+#include <QPainter>
+
+struct mouse_control_data {
+    QString type;
+    uint button;
+    int xpos;
+    int ypos;
+    int delta;
+    friend QDataStream &operator<<(QDataStream& out, const mouse_control_data& cd){
+        out << cd.type << cd.button << cd.xpos << cd.ypos << cd.delta;
+        return out;
+    }
+    friend QDataStream &operator>>(QDataStream& in, mouse_control_data& cd){
+        in >> cd.type >> cd.button >> cd.xpos >>  cd.ypos >> cd.delta;
+        return in;
+    }
+};
+struct keyboard_control_data {
+    QString type; // press, release
+    int key;
+    QString text;
+    friend QDataStream &operator<<(QDataStream& out, const keyboard_control_data& cd){
+        out << cd.type << cd.key << cd.text;
+        return out;
+    }
+    friend QDataStream &operator>>(QDataStream& in, keyboard_control_data& cd){
+        in >> cd.type >> cd.key >> cd.text;
+        return in;
+    }
+};
 
 struct control_data {
     QString type;
-    int button;
-    int xpos;
-    int ypos;
+    mouse_control_data md;
+    keyboard_control_data kd;
     friend QDataStream &operator<<(QDataStream& out, const control_data& cd){
-        out << cd.type << cd.button << cd.xpos <<  cd.ypos;
+        out << cd.type << cd.md << cd.kd;
         return out;
     }
     friend QDataStream &operator>>(QDataStream& in, control_data& cd){
-        in >> cd.type >> cd.button >> cd.xpos >>  cd.ypos;
+        in >> cd.type >> cd.md >> cd.kd;
         return in;
     }
 };
@@ -76,6 +105,18 @@ private:
         }
     };
     void take_preview_scr();
+    int decode_mouse_btn(uint mb);
+
+    struct cursor {
+        QImage img;
+        QPoint pos;
+
+        // Linux-reserved
+        QVarLengthArray< quint32 > buffer;
+    };
+
+    cursor capture_cursor() const;
+
 
     STATUS status = STATUS::DISCONNECTED;
     QTcpSocket* sock;

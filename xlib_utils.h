@@ -9,53 +9,6 @@
 #include <string>
 
 extern Display* display;
-void mouse_press(Display *display, int button)
-{
-    XEvent event;
-    memset (&event, 0, sizeof (event));
-    event.xbutton.button = button;
-    event.xbutton.same_screen = True;
-    event.xbutton.subwindow = DefaultRootWindow (display);
-    while (event.xbutton.subwindow)
-    {
-        event.xbutton.window = event.xbutton.subwindow;
-        XQueryPointer (display, event.xbutton.window,
-             &event.xbutton.root, &event.xbutton.subwindow,
-             &event.xbutton.x_root, &event.xbutton.y_root,
-             &event.xbutton.x, &event.xbutton.y,
-             &event.xbutton.state);
-    }
-    // Press
-    event.type = ButtonPress;
-    if (XSendEvent (display, PointerWindow, True, ButtonPressMask, &event) == 0)
-        fprintf (stderr, "Error to send the event!\n");
-    //XFlush (display);
-    //usleep (1);
-
-}
-void mouse_release(Display *display, int button)
-{
-    XEvent event;
-    memset (&event, 0, sizeof (event));
-    event.xbutton.button = button;
-    event.xbutton.same_screen = True;
-    event.xbutton.subwindow = DefaultRootWindow (display);
-    while (event.xbutton.subwindow)
-    {
-        event.xbutton.window = event.xbutton.subwindow;
-        XQueryPointer (display, event.xbutton.window,
-             &event.xbutton.root, &event.xbutton.subwindow,
-             &event.xbutton.x_root, &event.xbutton.y_root,
-             &event.xbutton.x, &event.xbutton.y,
-             &event.xbutton.state);
-    }
-    // Release
-    event.type = ButtonRelease;
-    if (XSendEvent (display, PointerWindow, True, ButtonReleaseMask, &event) == 0)
-        fprintf (stderr, "Error to send the event!\n");
-    //XFlush (display);
-    //usleep (1);
-}
 void click(Display *display, int button)
 {
     XEvent event;
