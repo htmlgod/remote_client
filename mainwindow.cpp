@@ -125,6 +125,16 @@ void MainWindow::read_settings_and_connect() {
         qDebug() << "settings recieved, connected";
         qDebug() << settings.y_res << " " << settings.x_res << " " <<
                     settings.img_format << " " << settings.compression;
+        QByteArray block;
+        QDataStream out(&block, QIODevice::WriteOnly);
+        QScreen *screen = QGuiApplication::primaryScreen();
+        QRect  screenGeometry = screen->geometry();
+        int height = screenGeometry.height();
+        int width = screenGeometry.width();
+        qDebug() << "Client info sended: " << width << height;
+        out << width << height;
+        sock->write(block);
+        sock->waitForBytesWritten();
     }
     else if(status == STATUS::CONNECTED or status == STATUS::CONTROL) {
         in.startTransaction();
