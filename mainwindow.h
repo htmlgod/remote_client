@@ -16,14 +16,15 @@
 
 struct control_data {
     QString type;
+    int button;
     int xpos;
     int ypos;
     friend QDataStream &operator<<(QDataStream& out, const control_data& cd){
-        out << cd.type <<  cd.xpos <<  cd.ypos;
+        out << cd.type << cd.button << cd.xpos <<  cd.ypos;
         return out;
     }
     friend QDataStream &operator>>(QDataStream& in, control_data& cd){
-        in >> cd.type >>  cd.xpos >>  cd.ypos;
+        in >> cd.type >> cd.button >> cd.xpos >>  cd.ypos;
         return in;
     }
 };
