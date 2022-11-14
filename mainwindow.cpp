@@ -153,6 +153,7 @@ void MainWindow::read_settings_and_connect() {
             ui->status_info->setText("Управление");
             preview_timer->setInterval(settings.xmit_upd.toUInt()*1000);
             qDebug() << "server started control";
+            ui->connect_button->setEnabled(false);
         }
         else if (msg == QString("STOP")) {
             control_socket->close();
@@ -160,6 +161,7 @@ void MainWindow::read_settings_and_connect() {
             ui->status_info->setText("Подключен");
             preview_timer->setInterval(settings.preview_upd.toUInt()*1000);
             qDebug() << "server stoped control";
+            ui->connect_button->setEnabled(true);
         }
     }
 }
