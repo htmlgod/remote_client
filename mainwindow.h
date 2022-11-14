@@ -27,7 +27,7 @@ public:
 private slots:
     void recieve_controls();
 
-    void read_settings_and_connect();
+    void read_data_from_server();
     void send_preview_scr();
     void on_connect_button_clicked();
     void on_dsc_button_clicked();

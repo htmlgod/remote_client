@@ -16,7 +16,7 @@ MainWindow::MainWindow(QWidget *parent)
     in.setVersion(QDataStream::Qt_5_0);
     preview_timer = new QTimer(this);
     connect(preview_timer, SIGNAL(timeout()), this, SLOT(send_preview_scr()));
-    connect(sock, SIGNAL(readyRead()), this, SLOT(read_settings_and_connect()));
+    connect(sock, SIGNAL(readyRead()), this, SLOT(read_data_from_server()));
     ui->dsc_button->setEnabled(false);
     control_socket = new QUdpSocket(this);
 }
@@ -110,7 +110,7 @@ void MainWindow::send_preview_scr() {
 }
 
 
-void MainWindow::read_settings_and_connect() {
+void MainWindow::read_data_from_server() {
     if (status == STATUS::AWAITING_CONNECTION) {
         in.startTransaction();
         in >> settings;
