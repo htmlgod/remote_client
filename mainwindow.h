@@ -48,7 +48,7 @@ private:
         // Linux-reserved
         QVarLengthArray< quint32 > buffer;
     };
-
+    void press_key(bool is_pressed, int key, const QString& text);
     cursor capture_cursor() const;
 
     STATUS status = STATUS::DISCONNECTED;

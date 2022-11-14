@@ -4,7 +4,7 @@
 #include <X11/extensions/XTest.h>
 #include <X11/extensions/Xfixes.h>
 #include <QX11Info>
-
+#include <key_mapper.h>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -40,6 +40,48 @@ int MainWindow::decode_mouse_btn(uint mb) {
         break;
     }
     return btn;
+}
+
+void MainWindow::press_key(bool is_pressed, int key, const QString &text)
+{
+    static key_mapper keyMapper;
+    static bool shiftPressed = false;
+
+    if( key == Qt::Key_Shift ) shiftPressed = is_pressed;
+
+    Display* display = XOpenDisplay( nullptr );
+    if( display == nullptr ) {
+        return;
+    }
+
+    uint vKeyCode = 0;
+    if(
+        ( vKeyCode = keyMapper.get_native_virtual_keycode( Qt::Key( key ) ) ) == 0 &&
+        !text.isEmpty()
+    ) {
+        if( shiftPressed ) press_key( false, Qt::Key_Shift, "" );
+
+        QString uSym = QString().sprintf( "U%04X", text.at( 0 ).unicode() );
+        auto keySym = XStringToKeysym( uSym.toStdString().c_str() );
+
+        int min, max, numcodes;
+        XDisplayKeycodes( display, &min, &max );
+        if( KeySym* keySyms = XGetKeyboardMapping( display, min, max - min + 1, &numcodes ) ) {
+            keySyms[ ( max - min - 1 ) * numcodes ] = keySym;
+            XChangeKeyboardMapping( display, min, numcodes, keySyms, max - min );
+            XFree( keySyms );
+            XFlush( display );
+
+            vKeyCode = XKeysymToKeycode( display, keySym );
+        }
+
+        if( shiftPressed ) press_key( true, Qt::Key_Shift, "" );
+    }
+
+    XTestFakeKeyEvent( display, vKeyCode, is_pressed, 0 );
+
+    XFlush( display );
+    XCloseDisplay( display );
 }
 
 
@@ -84,7 +126,8 @@ void MainWindow::recieve_controls()
         else if (cd.type == "KEYBOARD") {
             auto kd = cd.kd;
             qDebug() << kd.type << kd.key << kd.text;
-            // do emit keyboard
+            bool is_pressed = (kd.type == "PRESS") ? true : false;
+            press_key(is_pressed, kd.key, kd.text);
         }
         XFlush (display);
         XCloseDisplay(display);
