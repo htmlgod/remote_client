@@ -123,8 +123,12 @@ void MainWindow::read_data_from_server() {
         status = STATUS::CONNECTED;
         ui->status_info->setText("Подключен");
         qDebug() << "settings recieved, connected";
-        qDebug() << settings.y_res << " " << settings.x_res << " " <<
-                    settings.img_format << " " << settings.compression;
+        qDebug() << settings.y_res << " "
+                 << settings.x_res << " "
+                 << settings.img_format << " "
+                 << settings.compression << " "
+                 << settings.preview_upd << " "
+                 << settings.xmit_fps;
         QByteArray block;
         QDataStream out(&block, QIODevice::WriteOnly);
         QScreen *screen = QGuiApplication::primaryScreen();
@@ -151,7 +155,7 @@ void MainWindow::read_data_from_server() {
             }
             connect(control_socket, SIGNAL(readyRead()), this, SLOT(recieve_controls()));
             ui->status_info->setText("Управление");
-            preview_timer->setInterval(settings.xmit_upd.toUInt()*1000);
+            preview_timer->setInterval(1000/settings.xmit_fps.toUInt());
             qDebug() << "server started control";
             ui->dsc_button->setEnabled(false);
         }
