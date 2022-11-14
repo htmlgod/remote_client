@@ -1,7 +1,6 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
-//#include "xlib_utils.h"
 #include <X11/extensions/XTest.h>
 #include <X11/extensions/Xfixes.h>
 #include <QX11Info>
@@ -85,6 +84,7 @@ void MainWindow::recieve_controls()
         else if (cd.type == "KEYBOARD") {
             auto kd = cd.kd;
             qDebug() << kd.type << kd.key << kd.text;
+            // do emit keyboard
         }
         XFlush (display);
         XCloseDisplay(display);

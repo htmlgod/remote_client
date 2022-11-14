@@ -15,6 +15,7 @@ SOURCES += \
     mainwindow.cpp
 
 HEADERS += \
+    common.h \
     mainwindow.h \
     xlib_utils.h
 
