@@ -59,6 +59,8 @@ private:
     QString port;
     QDataStream in;
     server_settings_data settings;
+    uint8_t dhkey[32];
+    kuz_key_t* kkey;
 
     QUdpSocket* control_socket; // listening
     Ui::MainWindow *ui;

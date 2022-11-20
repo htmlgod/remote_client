@@ -11,13 +11,16 @@ LIBS += -lXfixes
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
+    common.cpp \
     key_mapper.cpp \
+    kuznechik.cpp \
     main.cpp \
     mainwindow.cpp
 
 HEADERS += \
     common.h \
     key_mapper.h \
+    kuznechik.h \
     mainwindow.h \
     xlib_utils.h
 

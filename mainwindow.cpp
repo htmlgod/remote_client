@@ -100,6 +100,9 @@ void MainWindow::recieve_controls()
         auto dg = control_socket->receiveDatagram();
         QByteArray data = dg.data();
         QDataStream ds(&data, QIODevice::ReadOnly);
+        if (settings.is_encrypted) {
+            // decrypt
+        }
         ds >> cd;
         if (cd.type == "MOUSE") {
             auto md = cd.md;
@@ -145,6 +148,9 @@ void MainWindow::send_preview_scr() {
         out << compressed;
         //auto compressed_size = compressed.size();
         // int sended_bytes = sock->write(dg_data);
+        if (settings.is_encrypted) {
+            // encrypt
+        }
         sock->write(dg_data);
         //qDebug() << "preview sended with size " << compressed_size;
         //auto compr_rate = 100 * (compressed_size / (double) raw_size);
@@ -182,6 +188,7 @@ void MainWindow::read_data_from_server() {
         out << width << height;
         sock->write(block);
         sock->waitForBytesWritten();
+        // DH HERE
     }
     else if(status == STATUS::CONNECTED or status == STATUS::CONTROL) {
         in.startTransaction();
