@@ -10,6 +10,8 @@
 #include <QBuffer>
 #include <QCursor>
 #include <QPainter>
+#include <QMessageBox>
+#include <QSettings>
 
 #include <common.h>
 
@@ -59,6 +61,7 @@ private:
     QString port;
     QDataStream in;
     server_settings_data settings;
+    QSettings inisettings{QString("/usr/local/remote-client/config.ini"), QSettings::IniFormat};
 
     QUdpSocket* control_socket; // listening
     Ui::MainWindow *ui;

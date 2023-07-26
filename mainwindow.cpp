@@ -10,6 +10,7 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
 {
+    QMessageBox::information(0, "info", QString("Remote Desktop Client, v") + QString(VERSION));
     ui->setupUi(this);
     sock = new QTcpSocket(this);
     in.setDevice(sock);
@@ -19,6 +20,8 @@ MainWindow::MainWindow(QWidget *parent)
     connect(sock, SIGNAL(readyRead()), this, SLOT(read_data_from_server()));
     ui->dsc_button->setEnabled(false);
     control_socket = new QUdpSocket(this);
+    ui->port_ed->setText(inisettings.value("connection/port", "1225").toString());
+    ui->ip_ed->setText(inisettings.value("connection/ip", "127.0.0.1").toString());
 }
 
 MainWindow::~MainWindow()
@@ -283,4 +286,6 @@ void MainWindow::on_dsc_button_clicked()
     ui->dsc_button->setEnabled(false);
     ui->connect_button->setEnabled(true);
     preview_timer->stop();
+    inisettings.setValue("connection/port", ui->port_ed->text());
+    inisettings.setValue("connection/ip", ui->ip_ed->text());
 }
