@@ -58,6 +58,7 @@ private:
     QTimer* preview_timer;
     QString ip;
     QString port;
+    QSettings settings;
     QDataStream in;
     server_settings_data settings;
 
