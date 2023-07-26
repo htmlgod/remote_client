@@ -10,6 +10,7 @@
 #include <QBuffer>
 #include <QCursor>
 #include <QPainter>
+#include <QMessageBox>
 
 #include <common.h>
 
