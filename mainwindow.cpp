@@ -10,6 +10,7 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
 {
+    QMessageBox::information(0, "info", QString("Remote Desktop Client, v") + QString(VERSION));
     ui->setupUi(this);
     sock = new QTcpSocket(this);
     in.setDevice(sock);
